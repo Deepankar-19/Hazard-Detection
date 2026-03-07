@@ -1,0 +1,13 @@
+# .gitignore for RoadGuard backend
+
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.env
+*.pkl
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
