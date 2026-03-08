@@ -21,7 +21,7 @@ router = APIRouter(tags=["Hazards"])
 # ──────────────────────────────────────
 # POST /predict-hazard
 # ──────────────────────────────────────
-@router.post("/predict-hazard", response_model=HazardPrediction, status_code=200)
+@router.post("/predict-hazard", response_model=list[HazardPrediction], status_code=200)
 async def predict_hazard(
     image: UploadFile = File(None),
     latitude: float = Form(...),
@@ -42,26 +42,37 @@ async def predict_hazard(
         raise HTTPException(status_code=400, detail="Failed to read image file")
     
     try:
-        prediction = await predict_hazard_info(
+        predictions = await predict_hazard_info(
             image_bytes=image_bytes,
             content_type=image.content_type or "image/jpeg",
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Model inference failed: {str(e)}")
     
-    if prediction["hazard_type"] == "unknown":
-        return HazardPrediction(
-            hazard_type="none",
-            message="No hazard detected"
-        )
+    # If the service returned the 'none' fallback
+    if len(predictions) == 1 and predictions[0]["hazard_type"] == "unknown":
+        return [
+            HazardPrediction(
+                hazard_type="none",
+                confidence=0.0,
+                severity_score=0.0,
+                severity_level="None",
+                estimated_repair_cost=0.0,
+                message="No hazard detected"
+            )
+        ]
     
-    return HazardPrediction(
-        hazard_type=prediction["hazard_type"],
-        confidence=prediction.get("confidence", 0.0), # Will add to service
-        severity=prediction["severity_score"],
-        image_url=prediction["image_url"],
-        repair_cost_estimate=prediction["repair_cost_estimate"]
-    )
+    results = []
+    for pred in predictions:
+        results.append(HazardPrediction(
+            hazard_type=pred["hazard_type"],
+            confidence=pred["confidence"],
+            severity_score=pred["severity_score"],
+            severity_level=pred["severity_level"],
+            estimated_repair_cost=pred["estimated_repair_cost"]
+        ))
+        
+    return results
 
 # ──────────────────────────────────────
 # POST /report-hazard
@@ -82,7 +93,7 @@ async def report_hazard(
         user_id=current_user.id,
         image_url=payload.image_url,
         hazard_type=payload.hazard_type,
-        severity_score=payload.severity_score,
+        severity_score=payload.severity_level, # Mapped from string "Low", "Medium", "High"
         repair_cost_estimate=payload.repair_cost_estimate,
         latitude=payload.latitude,
         longitude=payload.longitude,

@@ -8,11 +8,18 @@ Mapping:
 """
 
 
-def compute_severity(area_ratio: float) -> str:
-    """Convert a detection area ratio to a severity label."""
+from typing import Any
+
+def compute_severity(area_ratio: float) -> dict[str, Any]:
+    """Convert a detection area ratio to a severity score and level."""
     if area_ratio < 0.10:
-        return "LOW"
+        level = "Low"
     elif area_ratio <= 0.25:
-        return "MEDIUM"
+        level = "Medium"
     else:
-        return "HIGH"
+        level = "High"
+        
+    return {
+        "severity_score": round(area_ratio, 4),
+        "severity_level": level
+    }

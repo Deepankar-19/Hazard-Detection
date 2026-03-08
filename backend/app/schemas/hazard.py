@@ -9,17 +9,17 @@ from pydantic import BaseModel, Field
 
 class HazardPrediction(BaseModel):
     hazard_type: str
-    confidence: float | None = None
-    severity: str | None = None
-    image_url: str | None = None
-    repair_cost_estimate: float | None = None
+    confidence: float
+    severity_score: float
+    severity_level: str
+    estimated_repair_cost: float
     message: str | None = None
 
 
 class HazardReportPayload(BaseModel):
     image_url: str
     hazard_type: str
-    severity_score: str
+    severity_level: str
     repair_cost_estimate: float
     latitude: float
     longitude: float

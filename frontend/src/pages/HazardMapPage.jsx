@@ -31,6 +31,24 @@ const icons = {
   DEFAULT: createIcon('blue')
 };
 
+const municipalityIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-violet.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
+const userIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-black.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
+
 // Map auto-center behavior
 function MapUpdater({ center }) {
   const map = useMap();
@@ -82,7 +100,7 @@ export default function HazardMapPage() {
     return (
       <div className="h-full flex flex-col items-center justify-center p-6 text-center space-y-4">
         <Spinner size="lg" />
-        <p className="text-gray-500 font-medium">Loading map data...</p>
+        <p className="text-gray-500 font-medium">Getting your location & loading map data...</p>
       </div>
     );
   }
@@ -94,18 +112,25 @@ export default function HazardMapPage() {
         <p className="text-gray-500 text-sm">View reported road issues nearby.</p>
       </div>
 
-      <div className="flex-1 min-h-[400px] w-full bg-gray-100 rounded-2xl overflow-hidden shadow-inner border border-gray-200 relative z-0">
+      <div className="h-[450px] w-full bg-gray-100 rounded-2xl overflow-hidden shadow-inner border border-gray-200 relative z-0">
         <MapContainer 
           center={center} 
           zoom={13} 
-          style={{ height: '100%', width: '100%' }}
-          zoomControl={false}
+          className="absolute inset-0 w-full h-full"
+          zoomControl={true}
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <MapUpdater center={center} />
+
+          {/* User Location Marker */}
+          <Marker position={center} icon={userIcon}>
+            <Popup className="rounded-xl overflow-hidden font-bold text-center">
+              📍 You Are Here
+            </Popup>
+          </Marker>
 
           <MarkerClusterGroup
             chunkedLoading
@@ -115,7 +140,7 @@ export default function HazardMapPage() {
               <Marker 
                 key={hazard.id} 
                 position={[hazard.latitude, hazard.longitude]}
-                icon={icons[hazard.severity_score] || icons.DEFAULT}
+                icon={hazard.hazard_type === 'municipality_center' ? municipalityIcon : (icons[hazard.severity_score] || icons.DEFAULT)}
               >
                 <Popup className="rounded-xl overflow-hidden">
                   <div className="p-1 min-w-[200px]">
@@ -125,16 +150,18 @@ export default function HazardMapPage() {
                       className="w-full h-24 object-cover rounded-lg mb-2 bg-gray-100"
                       loading="lazy"
                     />
-                    <h3 className="font-bold capitalize mb-1">{hazard.hazard_type?.replace(/_/g, ' ')}</h3>
-                    <div className="space-y-1 text-sm text-gray-600">
-                      <p>Status: <b className="text-gray-900 capitalize">{hazard.status?.replace(/_/g, ' ')}</b></p>
-                      <p>Severity: <b className={`capitalize ${
-                        hazard.severity_score === 'HIGH' ? 'text-red-600' :
-                        hazard.severity_score === 'MEDIUM' ? 'text-orange-600' : 'text-green-600'
-                      }`}>{hazard.severity_score}</b></p>
-                      <p>Repair Cost: <b className="text-gray-900">₹{hazard.repair_cost_estimate?.toLocaleString() || 'N/A'}</b></p>
-                      <p>Reported: {new Date(hazard.created_at).toLocaleDateString()}</p>
-                    </div>
+                    <h3 className="font-bold capitalize mb-1">{hazard.hazard_type ? hazard.hazard_type.replace(/_/g, ' ') : 'Unknown'}</h3>
+                    {hazard.hazard_type !== 'municipality_center' && (
+                      <div className="space-y-1 text-sm text-gray-600">
+                        <p>Status: <b className="text-gray-900 capitalize">{hazard.status ? hazard.status.replace(/_/g, ' ') : 'Unknown'}</b></p>
+                        <p>Severity: <b className={`capitalize ${
+                          hazard.severity_score === 'HIGH' ? 'text-red-600' :
+                          hazard.severity_score === 'MEDIUM' ? 'text-orange-600' : 'text-green-600'
+                        }`}>{hazard.severity_score || 'N/A'}</b></p>
+                        <p>Repair Cost: <b className="text-gray-900">₹{hazard.repair_cost_estimate?.toLocaleString() || 'N/A'}</b></p>
+                        <p>Reported: {hazard.created_at ? new Date(hazard.created_at).toLocaleDateString() : 'N/A'}</p>
+                      </div>
+                    )}
                   </div>
                 </Popup>
               </Marker>

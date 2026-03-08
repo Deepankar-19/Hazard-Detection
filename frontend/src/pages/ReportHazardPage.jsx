@@ -55,23 +55,30 @@ export default function ReportHazardPage() {
 
   // 3. Confirm and Submit Report
   const handleSubmitFinal = async () => {
-    if (!classificationResult || !location) return;
+    if (!classificationResult || !classificationResult.length || !location) return;
 
     setStatus('submitting');
     try {
-      const payload = {
-        image_url: classificationResult.image_url,
-        hazard_type: classificationResult.hazard_type,
-        severity_score: classificationResult.severity_score,
-        repair_cost_estimate: classificationResult.repair_cost_estimate,
-        latitude: location.latitude,
-        longitude: location.longitude,
-        timestamp: location.timestamp,
-        road_type: 'city road'
-      };
+      const results = [];
+      for (const hazard of classificationResult) {
+        if (hazard.hazard_type === 'none') continue;
+        
+        const payload = {
+          image_url: hazard.image_url,
+          hazard_type: hazard.hazard_type,
+          severity_level: hazard.severity_level,
+          repair_cost_estimate: hazard.estimated_repair_cost,
+          latitude: location.latitude,
+          longitude: location.longitude,
+          timestamp: location.timestamp,
+          road_type: 'city road'
+        };
 
-      const data = await ReportService.reportHazard(payload);
-      setFinalReport(data);
+        const data = await ReportService.reportHazard(payload);
+        results.push(data);
+      }
+      
+      setFinalReport(results[0] || { status: 'submitted_multiple' });
       setStatus('success');
     } catch (err) {
       setErrorMsg(err.response?.data?.detail || 'Failed to submit final report. Please try again.');
@@ -184,35 +191,51 @@ export default function ReportHazardPage() {
 
           {/* STEP 3: CLASSIFICATION RESULT & CONFIRMATION */}
           {status === 'classification_done' && classificationResult && (
-            <div className="bg-gray-50 p-4 rounded-xl text-left space-y-3 border border-gray-100 animate-in fade-in duration-300">
-              <h4 className="font-bold text-gray-900 border-b pb-2">Hazard Detected</h4>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500">Type</span>
-                <span className="font-bold capitalize text-primary-700">{classificationResult.hazard_type.replace(/_/g, ' ')}</span>
-              </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500">Severity</span>
-                <span className={`font-bold px-2 py-0.5 rounded text-xs ${
-                  classificationResult.severity_score === 'HIGH' ? 'bg-red-100 text-red-700' :
-                  classificationResult.severity_score === 'MEDIUM' ? 'bg-orange-100 text-orange-700' :
-                  'bg-green-100 text-green-700'
-                }`}>
-                  {classificationResult.severity_score}
-                </span>
-              </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-500">Est. Repair Cost</span>
-                <span className="font-bold text-gray-900">₹{classificationResult.repair_cost_estimate?.toLocaleString()}</span>
-              </div>
+            <div className="space-y-3 animate-in fade-in duration-300">
+              <h4 className="font-bold text-gray-900 border-b pb-2">
+                {classificationResult.length} Hazard{classificationResult.length !== 1 ? 's' : ''} Detected
+              </h4>
+              
+              {classificationResult.length === 1 && classificationResult[0].hazard_type === 'none' ? (
+                <div className="bg-green-50 text-green-700 p-4 rounded-xl flex items-start gap-3 border border-green-100">
+                  <CheckCircle2 className="shrink-0" />
+                  <p className="text-sm font-medium">No road hazards detected in this image.</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 max-h-[300px] overflow-y-auto pr-2">
+                  {classificationResult.map((hazard, idx) => (
+                    <div key={idx} className="bg-gray-50 p-4 rounded-xl text-left space-y-3 border border-gray-100">
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-500">Type</span>
+                        <span className="font-bold capitalize text-primary-700">{hazard.hazard_type.replace(/_/g, ' ')}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-500">Severity</span>
+                        <span className={`font-bold px-2 py-0.5 rounded text-xs ${
+                          hazard.severity_level?.toUpperCase() === 'HIGH' ? 'bg-red-100 text-red-700' :
+                          hazard.severity_level?.toUpperCase() === 'MEDIUM' ? 'bg-orange-100 text-orange-700' :
+                          'bg-green-100 text-green-700'
+                        }`}>
+                          {hazard.severity_level} (Score: {hazard.severity_score})
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-gray-500">Est. Repair Cost</span>
+                        <span className="font-bold text-gray-900">₹{hazard.estimated_repair_cost?.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
           {/* SUBMIT BUTTON */}
           <button 
-            disabled={status !== 'classification_done'}
+            disabled={status !== 'classification_done' || (classificationResult?.length === 1 && classificationResult[0].hazard_type === 'none')}
             onClick={handleSubmitFinal}
             className={`w-full py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-all 
-              ${status !== 'classification_done'
+              ${status !== 'classification_done' || (classificationResult?.length === 1 && classificationResult[0].hazard_type === 'none')
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 : 'bg-primary-600 text-white shadow-md hover:bg-primary-700 active:scale-95'
               }

@@ -49,8 +49,8 @@ export const ReportService = {
     return response.data;
   },
 
-  getHotspots: async () => {
-    const response = await api.get('/hazard-hotspots');
+  getHotspots: async (lat, lng) => {
+    const response = await api.get('/hazard-hotspots', { params: { latitude: lat, longitude: lng } });
     return response.data;
   },
 
@@ -69,7 +69,40 @@ export const ReportService = {
   getWardPerformance: async () => {
     const response = await api.get('/dashboard/ward-performance');
     return response.data;
-  }
+  },
+
+  // ── User Dashboard ──
+  getMyReports: async () => {
+    const response = await api.get('/my-reports');
+    return response.data;
+  },
+
+  getNotifications: async () => {
+    const response = await api.get('/user/notifications');
+    return response.data;
+  },
+
+  // ── Admin Dashboard ──
+  getVerificationQueue: async () => {
+    const response = await api.get('/admin/verification-queue');
+    return response.data;
+  },
+
+  verifyHazard: async (hazardId, action) => {
+    const response = await api.post('/admin/verify-hazard', { hazard_id: hazardId, action });
+    return response.data;
+  },
+
+  getRepairCosts: async () => {
+    const response = await api.get('/admin/repair-costs');
+    return response.data;
+  },
+
+  assignRepair: async (hazardId, priority) => {
+    const response = await api.post('/admin/assign-repair', { hazard_id: hazardId, priority });
+    return response.data;
+  },
 };
 
 export default api;
+

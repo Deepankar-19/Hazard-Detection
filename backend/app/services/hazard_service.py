@@ -28,7 +28,7 @@ async def predict_hazard_info(
     image_bytes: bytes,
     content_type: str,
     road_type: str = "city road",
-) -> dict:
+) -> list[dict]:
     """Uploads image, runs inference, scores severity, and estimates cost."""
     # 1. Upload image
     image_url = upload_image(image_bytes, content_type)
@@ -36,30 +36,40 @@ async def predict_hazard_info(
     # 2. Run ML inference
     detections = detect_hazard(image_bytes)
 
-    # Pick the detection with the largest area (primary hazard)
+    # Pick all detections instead of just the primary one
+    predictions = []
+    
     if detections:
-        primary = max(detections, key=lambda d: d["area_ratio"])
-        hazard_type = primary["class_name"]
-        area_ratio = primary["area_ratio"]
-        confidence = primary["confidence"]
+        for det in detections:
+            hazard_type = det["class_name"]
+            area_ratio = det["area_ratio"]
+            confidence = det["confidence"]
+
+            # 3. Severity
+            severity_info = compute_severity(area_ratio)
+
+            # 4. Repair cost
+            # Note: We pass the string level to the estimator to maintain compatibility
+            cost = estimate_cost(hazard_type, severity_info["severity_level"].upper(), road_type)
+
+            predictions.append({
+                "hazard_type": hazard_type,
+                "confidence": confidence,
+                "severity_score": severity_info["severity_score"],
+                "severity_level": severity_info["severity_level"],
+                "estimated_repair_cost": cost,
+            })
     else:
-        hazard_type = "unknown"
-        area_ratio = 0.0
-        confidence = 0.0
+        # Return fallback for 'none' case
+        predictions.append({
+            "hazard_type": "unknown",
+            "confidence": 0.0,
+            "severity_score": 0.0,
+            "severity_level": "None",
+            "estimated_repair_cost": 0.0,
+        })
 
-    # 3. Severity
-    severity = compute_severity(area_ratio)
-
-    # 4. Repair cost
-    cost = estimate_cost(hazard_type, severity, road_type)
-
-    return {
-        "image_url": image_url,
-        "hazard_type": hazard_type,
-        "confidence": confidence,
-        "severity_score": severity,
-        "repair_cost_estimate": cost,
-    }
+    return predictions
 
 
 async def submit_hazard_report(

@@ -4,15 +4,14 @@ RoadGuard — FastAPI application entry point.
 Includes:
 • CORS middleware
 • Rate limiting (via SlowAPI)
-• Router registration for all endpoints
-• Lifespan events for DB init and model warm-up
+• Mock router registration (no Docker/DB required)
+• Lifespan events for model warm-up
 """
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -58,26 +57,16 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # CORS — allow all origins in dev, restrict in production
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"] if settings.APP_ENV == "development" else [],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ── Register Routers ──
-from app.routes.auth import router as auth_router            # noqa: E402
-from app.routes.hazards import router as hazards_router      # noqa: E402
-from app.routes.confirmations import router as confirm_router  # noqa: E402
-from app.routes.hotspots import router as hotspot_router     # noqa: E402
-from app.routes.leaderboard import router as lb_router       # noqa: E402
-from app.routes.dashboard import router as dash_router       # noqa: E402
+# ── Register Mock Router (no DB / Docker needed) ──
+from app.routes.mock_routes import router as mock_router  # noqa: E402
 
-app.include_router(auth_router)
-app.include_router(hazards_router)
-app.include_router(confirm_router)
-app.include_router(hotspot_router)
-app.include_router(lb_router)
-app.include_router(dash_router)
+app.include_router(mock_router)
 
 
 # ── Health Check ──
