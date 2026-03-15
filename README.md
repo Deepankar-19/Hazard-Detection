@@ -3,9 +3,13 @@ An AI-powered computer vision system that detects road hazards such as potholes,
 **Key Features**:
 
 • YOLO-based object detection model
+
 • Hazard detection from user-uploaded road images
+
 • FastAPI backend for image inference APIs
+
 • Automated classification of road hazards
+
 • Scalable SaaS-style architecture
 
 **Tech Stack**:
